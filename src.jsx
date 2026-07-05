@@ -24,6 +24,7 @@ import {
 import "./style.css";
 import "./theme.css";
 import "./thumbnails.css";
+import "./reviews.css";
 
 const seed = [
   {
@@ -188,6 +189,8 @@ function App() {
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const [heroTouch, setHeroTouch] = useState(null);
   const [recommendationRefresh, setRecommendationRefresh] = useState(0);
+  const [publicReviews, setPublicReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [profile, setProfile] = useState(
     () =>
       JSON.parse(localStorage.getItem("serata-profile") || "null") || {
@@ -229,6 +232,47 @@ function App() {
     const i = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(i);
   }, [timer]);
+  useEffect(() => {
+    if (!detail || !TMDB_KEY) {
+      setPublicReviews([]);
+      return;
+    }
+    const controller = new AbortController();
+    (async () => {
+      setReviewsLoading(true);
+      try {
+        const mediaType = detail.type === "Film" ? "movie" : "tv";
+        let id = detail.tmdbId;
+        if (!id) {
+          const search = await fetch(
+            `https://api.themoviedb.org/3/search/${mediaType}?api_key=${TMDB_KEY}&language=it-IT&query=${encodeURIComponent(detail.title)}`,
+            { signal: controller.signal },
+          ).then((r) => r.json());
+          id = search.results?.[0]?.id;
+        }
+        if (!id) return setPublicReviews([]);
+        const [italian, english] = await Promise.all([
+          fetch(
+            `https://api.themoviedb.org/3/${mediaType}/${id}/reviews?api_key=${TMDB_KEY}&language=it-IT&page=1`,
+            { signal: controller.signal },
+          ).then((r) => r.json()),
+          fetch(
+            `https://api.themoviedb.org/3/${mediaType}/${id}/reviews?api_key=${TMDB_KEY}&language=en-US&page=1`,
+            { signal: controller.signal },
+          ).then((r) => r.json()),
+        ]);
+        const merged = [...(italian.results || []), ...(english.results || [])];
+        setPublicReviews(
+          [...new Map(merged.map((r) => [r.id, r])).values()].slice(0, 4),
+        );
+      } catch (e) {
+        if (e.name !== "AbortError") setPublicReviews([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [detail?.id]);
   useEffect(() => {
     if (tab === "Scopri" && !TMDB_KEY) {
       const key = window.prompt(
@@ -1234,6 +1278,12 @@ function App() {
                   </div>
                 </div>
               )}
+              <section className="whatTheySay">
+                <div className="reviewsTitle"><div><span className="eyebrow">RECENSIONI PUBBLICHE</span><h3>Quello che dicono</h3></div><small>Fonte: TMDB</small></div>
+                {reviewsLoading && <p className="muted">Carico le recensioni…</p>}
+                {!reviewsLoading && publicReviews.length === 0 && <p className="muted">Non ci sono ancora recensioni pubbliche per questo titolo.</p>}
+                <div className="reviewCards">{publicReviews.map((r) => <article key={r.id} className="publicReview"><div><b>{r.author || "Utente TMDB"}</b>{r.author_details?.rating && <span>★ {r.author_details.rating}/10</span>}</div><p>{r.content.length > 420 ? r.content.slice(0, 420) + "…" : r.content}</p><small>{r.created_at ? new Date(r.created_at).toLocaleDateString("it-IT") : "TMDB"}</small></article>)}</div>
+              </section>
             </div>
           </article>
         </div>

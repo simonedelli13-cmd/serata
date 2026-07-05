@@ -291,6 +291,7 @@ function App() {
     progress = items.filter(
       (x) => x.type === "Serie" && x.seen < x.episodes && x.seen > 0 && x.fav,
     );
+  const featured = progress[0] || items.find((x) => x.fav) || items[0];
   const update = (id, p) => {
     setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
     setDetail((d) => (d?.id === id ? { ...d, ...p } : d));
@@ -492,22 +493,32 @@ function App() {
                 {avatar}
               </button>
             </header>
-            <section className="hero">
+            <section
+              className="hero"
+              style={
+                featured?.poster
+                  ? {
+                      backgroundImage: `linear-gradient(90deg, #050505 0%, #050505 38%, rgba(5,5,5,.72) 58%, rgba(5,5,5,.12) 100%), url(${featured.poster})`,
+                    }
+                  : undefined
+              }
+            >
               <div>
                 <span className="pill">
                   <Sparkles size={14} /> PER TE
                 </span>
-                <h2>
-                  La tua prossima
-                  <br />
-                  bella storia
-                </h2>
-                <p>Riprendi The Bear da S03 · E08</p>
-                <button className="primary" onClick={() => setDetail(items[0])}>
+                <h2>{featured?.title || "La tua prossima storia"}</h2>
+                <p>
+                  {featured?.type === "Serie"
+                    ? `Riprendi dall’episodio ${Math.min(featured.seen + 1, featured.episodes)} di ${featured.episodes}`
+                    : featured?.seen
+                      ? "Riguarda questo film"
+                      : "Pronto da guardare"}
+                </p>
+                <button className="primary" onClick={() => setDetail(featured)}>
                   <Play size={17} fill="currentColor" /> Continua
                 </button>
               </div>
-              <div className="heroArt">🍽️</div>
             </section>
             <div className="sectionHead">
               <h3>Continua a guardare</h3>

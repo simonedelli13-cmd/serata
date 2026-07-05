@@ -184,7 +184,9 @@ function App() {
   const [adding, setAdding] = useState(false);
   const [tmdbResults, setTmdbResults] = useState([]);
   const [tmdbLoading, setTmdbLoading] = useState(false);
-  const [spotlight, setSpotlight] = useState(null);
+  const [spotlights, setSpotlights] = useState([]);
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const [heroTouch, setHeroTouch] = useState(null);
   const [profile, setProfile] = useState(
     () =>
       JSON.parse(localStorage.getItem("serata-profile") || "null") || {
@@ -333,12 +335,14 @@ function App() {
                 i.title.toLowerCase() === (x.title || x.name || "").toLowerCase(),
             ),
         );
-        if (candidates.length) {
-          const pick = candidates[new Date().getDate() % Math.min(candidates.length, 10)];
-          setSpotlight(toItem(pick, pick.media_type || mediaType));
-        }
+        if (candidates.length)
+          setSpotlights(
+            candidates
+              .slice(0, 8)
+              .map((x) => toItem(x, x.media_type || mediaType)),
+          );
       } catch (e) {
-        if (e.name !== "AbortError") setSpotlight(null);
+        if (e.name !== "AbortError") setSpotlights([]);
       }
     })();
     return () => controller.abort();
@@ -348,7 +352,19 @@ function App() {
     progress = items.filter(
       (x) => x.type === "Serie" && x.seen < x.episodes && x.seen > 0 && x.fav,
     );
-  const featured = spotlight || progress[0] || items.find((x) => x.fav) || items[0];
+  useEffect(() => {
+    if (spotlights.length < 2) return;
+    const id = setInterval(
+      () => setSpotlightIndex((i) => (i + 1) % spotlights.length),
+      8000,
+    );
+    return () => clearInterval(id);
+  }, [spotlights.length]);
+  const featured =
+    spotlights[spotlightIndex % Math.max(spotlights.length, 1)] ||
+    progress[0] ||
+    items.find((x) => x.fav) ||
+    items[0];
   const update = (id, p) => {
     setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
     setDetail((d) => (d?.id === id ? { ...d, ...p } : d));
@@ -561,6 +577,18 @@ function App() {
             </header>
             <section
               className="hero"
+              onTouchStart={(e) => setHeroTouch(e.touches[0].clientX)}
+              onTouchEnd={(e) => {
+                if (heroTouch == null || spotlights.length < 2) return;
+                const delta = e.changedTouches[0].clientX - heroTouch;
+                if (Math.abs(delta) > 45)
+                  setSpotlightIndex((i) =>
+                    delta < 0
+                      ? (i + 1) % spotlights.length
+                      : (i - 1 + spotlights.length) % spotlights.length,
+                  );
+                setHeroTouch(null);
+              }}
               style={
                 featured?.poster
                   ? {
@@ -587,6 +615,39 @@ function App() {
                   <Play size={17} fill="currentColor" /> {featured?.discovery ? "Scopri" : "Continua"}
                 </button>
               </div>
+              {spotlights.length > 1 && (
+                <div className="heroControls">
+                  <button
+                    aria-label="Consiglio precedente"
+                    onClick={() =>
+                      setSpotlightIndex(
+                        (i) =>
+                          (i - 1 + spotlights.length) % spotlights.length,
+                      )
+                    }
+                  >
+                    ‹
+                  </button>
+                  <div className="heroDots">
+                    {spotlights.map((_, i) => (
+                      <button
+                        key={i}
+                        className={i === spotlightIndex ? "active" : ""}
+                        aria-label={`Mostra consiglio ${i + 1}`}
+                        onClick={() => setSpotlightIndex(i)}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    aria-label="Consiglio successivo"
+                    onClick={() =>
+                      setSpotlightIndex((i) => (i + 1) % spotlights.length)
+                    }
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
             </section>
             <div className="sectionHead">
               <h3>Continua a guardare</h3>

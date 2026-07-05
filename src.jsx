@@ -184,6 +184,7 @@ function App() {
   const [adding, setAdding] = useState(false);
   const [tmdbResults, setTmdbResults] = useState([]);
   const [tmdbLoading, setTmdbLoading] = useState(false);
+  const [spotlight, setSpotlight] = useState(null);
   const [profile, setProfile] = useState(
     () =>
       JSON.parse(localStorage.getItem("serata-profile") || "null") || {
@@ -286,12 +287,68 @@ function App() {
       controller.abort();
     };
   }, [query]);
+  useEffect(() => {
+    if (!TMDB_KEY) return;
+    const controller = new AbortController();
+    const toItem = (x, mediaType) => ({
+      id: `tmdb-${mediaType}-${x.id}`,
+      tmdbId: x.id,
+      title: x.title || x.name,
+      type: mediaType === "movie" ? "Film" : "Serie",
+      year: Number((x.release_date || x.first_air_date || "").slice(0, 4)) || "",
+      genre: "Consigliato per te",
+      episodes: 1,
+      seen: 0,
+      rating: Number((x.vote_average || 0).toFixed(1)),
+      poster: x.poster_path ? TMDB_IMAGE + x.poster_path : "",
+      color: "#222",
+      emoji: mediaType === "movie" ? "🎬" : "📺",
+      fav: false,
+      minutes: 0,
+      review: x.overview || "Una nuova storia scelta in base ai tuoi preferiti.",
+      discovery: true,
+    });
+    (async () => {
+      try {
+        const favorite = items.find((x) => x.fav);
+        let mediaType = favorite?.type === "Film" ? "movie" : "tv";
+        let tmdbId = favorite?.tmdbId;
+        if (favorite && !tmdbId) {
+          const search = await fetch(
+            `https://api.themoviedb.org/3/search/${mediaType}?api_key=${TMDB_KEY}&language=it-IT&query=${encodeURIComponent(favorite.title)}`,
+            { signal: controller.signal },
+          ).then((r) => r.json());
+          tmdbId = search.results?.[0]?.id;
+        }
+        const endpoint = tmdbId
+          ? `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/recommendations?api_key=${TMDB_KEY}&language=it-IT&page=1`
+          : `https://api.themoviedb.org/3/trending/all/week?api_key=${TMDB_KEY}&language=it-IT`;
+        const data = await fetch(endpoint, { signal: controller.signal }).then((r) => r.json());
+        const candidates = (data.results || []).filter(
+          (x) =>
+            x.poster_path &&
+            !items.some(
+              (i) =>
+                i.tmdbId === x.id ||
+                i.title.toLowerCase() === (x.title || x.name || "").toLowerCase(),
+            ),
+        );
+        if (candidates.length) {
+          const pick = candidates[new Date().getDate() % Math.min(candidates.length, 10)];
+          setSpotlight(toItem(pick, pick.media_type || mediaType));
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") setSpotlight(null);
+      }
+    })();
+    return () => controller.abort();
+  }, [items]);
   const watched = items.reduce((a, x) => a + x.minutes, 0),
     eps = items.reduce((a, x) => a + x.seen, 0),
     progress = items.filter(
       (x) => x.type === "Serie" && x.seen < x.episodes && x.seen > 0 && x.fav,
     );
-  const featured = progress[0] || items.find((x) => x.fav) || items[0];
+  const featured = spotlight || progress[0] || items.find((x) => x.fav) || items[0];
   const update = (id, p) => {
     setItems((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
     setDetail((d) => (d?.id === id ? { ...d, ...p } : d));
@@ -505,18 +562,20 @@ function App() {
             >
               <div>
                 <span className="pill">
-                  <Sparkles size={14} /> PER TE
+                  <Sparkles size={14} /> {featured?.discovery ? "NUOVA USCITA PER TE" : "PER TE"}
                 </span>
                 <h2>{featured?.title || "La tua prossima storia"}</h2>
                 <p>
-                  {featured?.type === "Serie"
+                  {featured?.discovery
+                    ? `Consigliato dai tuoi preferiti · ${featured.rating || "—"}/10`
+                    : featured?.type === "Serie"
                     ? `Riprendi dall’episodio ${Math.min(featured.seen + 1, featured.episodes)} di ${featured.episodes}`
                     : featured?.seen
                       ? "Riguarda questo film"
                       : "Pronto da guardare"}
                 </p>
-                <button className="primary" onClick={() => setDetail(featured)}>
-                  <Play size={17} fill="currentColor" /> Continua
+                <button className="primary" onClick={() => featured?.discovery ? selectTitle(featured) : setDetail(featured)}>
+                  <Play size={17} fill="currentColor" /> {featured?.discovery ? "Scopri" : "Continua"}
                 </button>
               </div>
             </section>

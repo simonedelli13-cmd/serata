@@ -380,7 +380,14 @@ function App() {
     const blob = new Blob(
       [
         JSON.stringify(
-          { version: 1, exportedAt: new Date().toISOString(), items },
+          {
+            version: 2,
+            app: "EliTV",
+            exportedAt: new Date().toISOString(),
+            items,
+            profile,
+            lists,
+          },
           null,
           2,
         ),
@@ -390,7 +397,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "serata-backup.json";
+    a.download = `elitv-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -403,9 +410,11 @@ function App() {
         const data = JSON.parse(reader.result);
         if (!Array.isArray(data.items)) throw new Error();
         setItems(data.items);
+        if (data.profile) setProfile(data.profile);
+        if (Array.isArray(data.lists)) setLists(data.lists);
         alert("Backup importato correttamente.");
       } catch {
-        alert("Questo file non è un backup valido di Serata.");
+        alert("Questo file non è un backup valido di EliTV.");
       }
     };
     reader.readAsText(file);

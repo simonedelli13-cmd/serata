@@ -181,6 +181,7 @@ const tutorialSteps = [
   { icon: "▶️", title: "Registra i progressi", text: "Apri una serie per aggiornare gli episodi o avvia il timer di visione. Le statistiche si aggiornano da sole." },
   { icon: "💬", title: "Quello che dicono", text: "Nelle schede trovi recensioni pubbliche aggiornate, autore, voto e data." },
   { icon: "👤", title: "Il tuo profilo", text: "Personalizza nome, foto e tema. Esporta ogni tanto un backup per tenere al sicuro tutti i dati." },
+  { icon: "😏", title: "E comunque…", text: "Visto che alla fine ti amo più io." },
 ];
 function App() {
   const [items, setItems] = useState(

@@ -1,1 +1,1 @@
-{"name":"Serata — Il tuo diario di visione","short_name":"Serata","start_url":"./","scope":"./","display":"standalone","background_color":"#fbfaf8","theme_color":"#fbfaf8","orientation":"any","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{"name":"EliTV — Il tuo diario di visione","short_name":"EliTV","start_url":"./","scope":"./","display":"standalone","background_color":"#141414","theme_color":"#141414","orientation":"any","icons":[{"src":"./elitv-icon.png","sizes":"1024x1024","type":"image/png","purpose":"any maskable"}]}

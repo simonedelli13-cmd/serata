@@ -187,6 +187,7 @@ function App() {
   const [spotlights, setSpotlights] = useState([]);
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const [heroTouch, setHeroTouch] = useState(null);
+  const [recommendationRefresh, setRecommendationRefresh] = useState(0);
   const [profile, setProfile] = useState(
     () =>
       JSON.parse(localStorage.getItem("serata-profile") || "null") || {
@@ -346,7 +347,28 @@ function App() {
       }
     })();
     return () => controller.abort();
-  }, [items]);
+  }, [items, recommendationRefresh]);
+  useEffect(() => {
+    const sixHours = 6 * 60 * 60 * 1000;
+    const interval = setInterval(
+      () => setRecommendationRefresh(Date.now()),
+      sixHours,
+    );
+    const refreshWhenReturning = () => {
+      if (document.visibilityState !== "visible") return;
+      const last = Number(localStorage.getItem("elitv-last-recommendations") || 0);
+      if (Date.now() - last > sixHours) {
+        localStorage.setItem("elitv-last-recommendations", String(Date.now()));
+        setRecommendationRefresh(Date.now());
+      }
+    };
+    document.addEventListener("visibilitychange", refreshWhenReturning);
+    refreshWhenReturning();
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenReturning);
+    };
+  }, []);
   const watched = items.reduce((a, x) => a + x.minutes, 0),
     eps = items.reduce((a, x) => a + x.seen, 0),
     progress = items.filter(

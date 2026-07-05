@@ -25,6 +25,7 @@ import "./style.css";
 import "./theme.css";
 import "./thumbnails.css";
 import "./reviews.css";
+import "./onboarding.css";
 
 const seed = [
   {
@@ -172,6 +173,15 @@ function Poster({ item, onClick, wide = false }) {
     </button>
   );
 }
+const tutorialSteps = [
+  { icon: "👋", title: "Benvenuta in EliTV", text: "Il tuo spazio personale per ricordare film, serie, episodi e tutto ciò che ami guardare." },
+  { icon: "✨", title: "Oggi e Per te", text: "Nella Home trovi ciò che stai guardando e nuovi consigli basati sui tuoi preferiti. Scorri il banner con un dito." },
+  { icon: "🔎", title: "Scopri", text: "Cerca il titolo nel catalogo TMDB: copertina, trama e valutazioni vengono aggiunte automaticamente." },
+  { icon: "📚", title: "Libreria e liste", text: "Organizza i titoli in corso, visti e preferiti. Puoi anche creare tutte le liste personalizzate che vuoi." },
+  { icon: "▶️", title: "Registra i progressi", text: "Apri una serie per aggiornare gli episodi o avvia il timer di visione. Le statistiche si aggiornano da sole." },
+  { icon: "💬", title: "Quello che dicono", text: "Nelle schede trovi recensioni pubbliche aggiornate, autore, voto e data." },
+  { icon: "👤", title: "Il tuo profilo", text: "Personalizza nome, foto e tema. Esporta ogni tanto un backup per tenere al sicuro tutti i dati." },
+];
 function App() {
   const [items, setItems] = useState(
     () => JSON.parse(localStorage.getItem("serata-items") || "null") || seed,
@@ -205,6 +215,10 @@ function App() {
     () => JSON.parse(localStorage.getItem("elitv-lists") || "null") || [],
   );
   const [activeList, setActiveList] = useState(null);
+  const [showTutorial, setShowTutorial] = useState(
+    () => localStorage.getItem("elitv-tutorial-complete") !== "yes",
+  );
+  const [tutorialIndex, setTutorialIndex] = useState(0);
   useEffect(
     () => localStorage.setItem("serata-items", JSON.stringify(items)),
     [items],
@@ -1039,6 +1053,9 @@ function App() {
                 <Upload /> Scegli foto profilo
                 <input type="file" accept="image/*" onChange={changePhoto} />
               </label>
+              <button className="tutorialReplay" onClick={() => { setTutorialIndex(0); setShowTutorial(true); }}>
+                <Sparkles size={18} /> Rivedi tutorial
+              </button>
             </section>
             <h3>Generi del cuore</h3>
             <div className="genres">
@@ -1166,6 +1183,22 @@ function App() {
           </button>
         ))}
       </nav>
+      {showTutorial && (
+        <div className="tutorialOverlay">
+          <section className="tutorialCard">
+            <button className="tutorialSkip" onClick={() => { localStorage.setItem("elitv-tutorial-complete", "yes"); setShowTutorial(false); }}>Salta</button>
+            <div className="tutorialIcon">{tutorialSteps[tutorialIndex].icon}</div>
+            <p className="eyebrow">GUIDA {tutorialIndex + 1} DI {tutorialSteps.length}</p>
+            <h2>{tutorialSteps[tutorialIndex].title}</h2>
+            <p>{tutorialSteps[tutorialIndex].text}</p>
+            <div className="tutorialDots">{tutorialSteps.map((_, i) => <i key={i} className={i === tutorialIndex ? "active" : ""} />)}</div>
+            <div className="tutorialActions">
+              <button disabled={tutorialIndex === 0} onClick={() => setTutorialIndex(i => i - 1)}>Indietro</button>
+              <button className="primary" onClick={() => { if (tutorialIndex < tutorialSteps.length - 1) setTutorialIndex(i => i + 1); else { localStorage.setItem("elitv-tutorial-complete", "yes"); setShowTutorial(false); } }}>{tutorialIndex === tutorialSteps.length - 1 ? "Inizia" : "Avanti"}</button>
+            </div>
+          </section>
+        </div>
+      )}
       {detail && lists.length > 0 && (
         <div className="listQuick">
           <span>Le tue liste</span>
